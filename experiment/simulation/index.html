@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AM Modulation Virtual Lab (DSB & SSB)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <h1>AM Modulation Virtual Lab <span class="tooltip">(DSB & SSB)<span class="tooltiptext">Double Sideband and Single Sideband Amplitude Modulation</span></span></h1>
+
+  <div class="frame">
+    <!-- Message Signal Block -->
+    <div class="block">
+      <h3>1. Message Signal <span class="led active" id="msgLed"></span></h3>
+      <div class="controls">
+        <div class="control-group">
+          <label>Amplitude:</label>
+          <input type="range" id="msgAmp" min="0" max="1" step="0.01" value="0.8" />
+          <input type="number" id="msgAmpValue" min="0" max="1" step="0.01" value="0.8" />
+        </div>
+        <div class="control-group">
+          <label>Frequency:</label>
+          <input type="range" id="msgFreq" min="1" max="10" step="0.1" value="2" />
+          <input type="number" id="msgFreqValue" min="1" max="10" step="0.1" value="2" />
+          <span>Hz</span>
+        </div>
+        <div class="control-group">
+          <label>Waveform:</label>
+          <select id="msgWaveform">
+            <option value="sine">Sine</option>
+            <option value="triangle">Triangle</option>
+            <option value="square">Square</option>
+          </select>
+        </div>
+      </div>
+      <div class="canvas-container">
+        <div class="y-scale">
+          <span>+1</span>
+          <span>0</span>
+          <span>-1</span>
+        </div>
+        <canvas id="messageCanvas"></canvas>
+        <div class="x-scale">Time (ms)</div>
+      </div>
+      <div class="status-bar">
+        <div class="status-item">
+          <span>Amplitude:</span>
+          <span id="msgAmpStatus">0.8 V</span>
+        </div>
+        <div class="status-item">
+          <span>Frequency:</span>
+          <span id="msgFreqStatus">2.0 Hz</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Carrier Signal Block -->
+    <div class="block">
+      <h3>2. Carrier Signal <span class="led active" id="carLed"></span></h3>
+      <div class="controls">
+        <div class="control-group">
+          <label>Amplitude:</label>
+          <input type="range" id="carAmp" min="0.1" max="1" step="0.01" value="0.5" />
+          <input type="number" id="carAmpValue" min="0.1" max="1" step="0.01" value="0.5" />
+        </div>
+        <div class="control-group">
+          <label>Frequency:</label>
+          <input type="range" id="carFreq" min="10" max="100" step="1" value="50" />
+          <input type="number" id="carFreqValue" min="10" max="100" step="1" value="50" />
+          <span>Hz</span>
+        </div>
+      </div>
+      <div class="canvas-container">
+        <div class="y-scale">
+          <span>+1</span>
+          <span>0</span>
+          <span>-1</span>
+        </div>
+        <canvas id="carrierCanvas"></canvas>
+        <div class="x-scale">Time (ms)</div>
+      </div>
+      <div class="status-bar">
+        <div class="status-item">
+          <span>Amplitude:</span>
+          <span id="carAmpStatus">0.5 V</span>
+        </div>
+        <div class="status-item">
+          <span>Frequency:</span>
+          <span id="carFreqStatus">50 Hz</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modulated Signal Block -->
+    <div class="block modulator-block">
+      <div class="connection"></div>
+      <div class="connection-line"></div>
+      <h3>3. Modulator <span class="led active" id="modLed"></span></h3>
+      <div class="ssb-controls">
+        <div class="control-group">
+          <label>Modulation Type:</label>
+          <select id="modType">
+            <option value="dsb">DSB (Double Sideband)</option>
+            <option value="ssb">SSB (Single Sideband)</option>
+          </select>
+        </div>
+        <div id="ssbOptions" class="ssb-options" style="display: none;">
+          <div class="ssb-option">
+            <input type="radio" id="usb" name="ssbType" value="usb" checked>
+            <label for="usb">Upper Sideband (USB)</label>
+          </div>
+          <div class="ssb-option">
+            <input type="radio" id="lsb" name="ssbType" value="lsb">
+            <label for="lsb">Lower Sideband (LSB)</label>
+          </div>
+        </div>
+        <div id="hilbertInfo" class="hilbert-transform">
+          <strong>Technical Note:</strong> SSB is implemented using Hilbert transform method (analytic signal approach)
+        </div>
+      </div>
+      <div class="canvas-container">
+        <div class="y-scale">
+          <span>+2</span>
+          <span>0</span>
+          <span>-2</span>
+        </div>
+        <canvas id="modulatedCanvas"></canvas>
+        <div class="x-scale">Time (ms)</div>
+      </div>
+      <div id="modIndexOutput" class="mod-index">Modulation Index (m) = 1.6</div>
+      <div id="powerInfo" class="info-panel">
+        <strong>Power Analysis:</strong><br>
+        • Carrier Power: <span id="carPower">0.125</span> W<br>
+        • Sideband Power: <span id="sbPower">0.160</span> W (each)<br>
+        • Total Power: <span id="totalPower">0.445</span> W
+      </div>
+      <button id="simulateBtn">
+        <span id="btnText">Update Simulation</span>
+        <span id="btnIcon">↻</span>
+      </button>
+    </div>
+
+    <!-- CRO Block -->
+    <div class="block">
+      <div class="connection"></div>
+      <h3>4. Oscilloscope (CRO) <span class="led active" id="croLed"></span></h3>
+      <div class="controls">
+        <div class="control-group">
+          <label>Time/Div:</label>
+          <select id="timeDiv">
+            <option value="50">50ms</option>
+            <option value="100">100ms</option>
+            <option value="200" selected>200ms</option>
+            <option value="500">500ms</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Volts/Div:</label>
+          <select id="voltDiv">
+            <option value="0.2">0.2V</option>
+            <option value="0.5">0.5V</option>
+            <option value="1" selected>1V</option>
+            <option value="2">2V</option>
+          </select>
+        </div>
+      </div>
+      <div class="canvas-container">
+        <div class="y-scale">
+          <span id="croYMax">+2V</span>
+          <span>0V</span>
+          <span id="croYMin">-2V</span>
+        </div>
+        <canvas id="croCanvas"></canvas>
+        <div class="x-scale">
+          <span id="croXMin">0ms</span>
+          <span id="croXMax">1000ms</span>
+        </div>
+      </div>
+      <p>Connected to modulator output showing the AM signal.</p>
+      <div class="status-bar">
+        <div class="status-item">
+          <span>Timebase:</span>
+          <span id="timebaseStatus">200ms/div</span>
+        </div>
+        <div class="status-item">
+          <span>Sensitivity:</span>
+          <span id="sensitivityStatus">1V/div</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spectrum Analyzer Block -->
+    <div class="block">
+      <h3>5. Spectrum Analyzer <span class="led active" id="specLed"></span></h3>
+      <div class="controls">
+        <div class="control-group">
+          <label>Scale:</label>
+          <select id="spectrumScale">
+            <option value="linear">Linear</option>
+            <option value="log" selected>Logarithmic</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Range:</label>
+          <select id="spectrumRange">
+            <option value="50">50 Hz</option>
+            <option value="100" selected>100 Hz</option>
+            <option value="200">200 Hz</option>
+          </select>
+        </div>
+      </div>
+      <div class="canvas-container">
+        <div class="y-scale">
+          <span id="spectrumYMax">0 dB</span>
+          <span>-20 dB</span>
+          <span>-40 dB</span>
+        </div>
+        <canvas id="spectrumCanvas"></canvas>
+        <div class="x-scale">
+          <span id="spectrumXMin">0Hz</span>
+          <span id="spectrumXCenter">50Hz</span>
+          <span id="spectrumXMax">100Hz</span>
+        </div>
+      </div>
+      <div id="spectrumInfo" class="info-panel">
+        <strong>Peak Frequencies:</strong><br>
+        • Carrier: <span id="carrierFreq">50.0</span> Hz<br>
+        • USB: <span id="usbFreq">52.0</span> Hz<br>
+        • LSB: <span id="lsbFreq">48.0</span> Hz
+      </div>
+    </div>
+
+    <!-- Theory Block -->
+    <div class="block">
+      <h3>6. Theory & Formulas <span class="tooltip">ℹ️<span class="tooltiptext">Mathematical representation of AM modulation techniques</span></span></h3>
+      <div class="info-panel">
+        <strong>DSB-AM (Double Sideband Amplitude Modulation):</strong>
+        <div class="equation">
+          s(t) = [A<sub>c</sub> + m(t)]·cos(2πf<sub>c</sub>t)
+        </div>
+        Where:<br>
+        • A<sub>c</sub> is carrier amplitude<br>
+        • m(t) is message signal<br>
+        • f<sub>c</sub> is carrier frequency
+        
+        <div style="margin-top: 15px;">
+        <strong>SSB-AM (Single Sideband - Hilbert Method):</strong>
+        <div class="equation">
+          s<sub>USB</sub>(t) = m(t)·cos(2πf<sub>c</sub>t) - m̂(t)·sin(2πf<sub>c</sub>t)<br>
+          s<sub>LSB</sub>(t) = m(t)·cos(2πf<sub>c</sub>t) + m̂(t)·sin(2πf<sub>c</sub>t)
+        </div>
+        Where m̂(t) is Hilbert transform of m(t)
+        </div>
+      </div>
+      <div class="wave-diagram">
+        <p>Spectrum comparison:</p>
+        <img src="https://www.electronics-notes.com/images/ssb-single-sideband-spectrum.gif" alt="DSB vs SSB Spectrum">
+        <p style="font-size: 12px; text-align: center; margin-top: 5px;">DSB (left) vs SSB (right) frequency spectrum</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
